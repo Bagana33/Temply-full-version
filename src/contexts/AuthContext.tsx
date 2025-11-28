@@ -25,14 +25,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null)
 
   useEffect(() => {
+    const client = supabase
+
     // If supabase is not available (development mode), set loading to false
-    if (!supabase) {
+    if (!client) {
       setLoading(false)
       return
     }
 
     const getSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession()
+      const { data: { session }, error } = await client.auth.getSession()
       
       if (error) {
         console.error('Error getting session:', error)
@@ -47,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getSession()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = client.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session)
         setUser(session?.user ?? null)
