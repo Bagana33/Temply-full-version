@@ -20,6 +20,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const MOCK_USERS_KEY = 'temply-users'
 const MOCK_SESSION_KEY = 'temply-current-user'
+const DEFAULT_MOCK_USER = {
+  email: 'demo@temply.mn',
+  password: 'password123',
+  name: 'Demo User',
+  role: 'USER' as UserRole
+}
 
 type MockStoredUser = {
   id: string
@@ -106,6 +112,20 @@ const createMockAuthError = (message: string): AuthError =>
     status: 400
   } as AuthError)
 
+const seedDefaultMockUser = () => {
+  if (!hasBrowserStorage()) return
+  const existing = readMockUsers()
+  if (existing.length > 0) return
+  const newUser: MockStoredUser = {
+    id: generateMockId(),
+    email: DEFAULT_MOCK_USER.email,
+    name: DEFAULT_MOCK_USER.name,
+    role: DEFAULT_MOCK_USER.role,
+    passwordHash: encodePassword(DEFAULT_MOCK_USER.password)
+  }
+  persistMockUsers([newUser])
+}
+
 const convertToSupabaseUser = (storedUser: MockStoredUser): User => {
   const timestamp = new Date().toISOString()
   return {
@@ -154,6 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [useMockAuth, setUseMockAuth] = useState(!supabase)
 
   const loadMockSession = useCallback(() => {
+    seedDefaultMockUser()
     const storedSession = readMockSession()
     if (storedSession) {
       setUser(convertToSupabaseUser(storedSession))
@@ -287,6 +308,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, name: string, userRole: UserRole) => {
     if (useMockAuth || !supabase) {
+      seedDefaultMockUser()
       return mockSignUp(email, password, name, userRole)
     }
 
@@ -301,9 +323,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
-    if (shouldFallbackToMock(error)) {
+    if (error || shouldFallbackToMock(error)) {
       console.warn('Falling back to mock auth for sign up due to Supabase error.')
       setUseMockAuth(true)
+      seedDefaultMockUser()
       return mockSignUp(email, password, name, userRole)
     }
 
@@ -312,6 +335,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     if (useMockAuth || !supabase) {
+      seedDefaultMockUser()
       return mockSignIn(email, password)
     }
 
@@ -320,9 +344,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password
     })
 
-    if (shouldFallbackToMock(error)) {
+    if (error || shouldFallbackToMock(error)) {
       console.warn('Falling back to mock auth for sign in due to Supabase error.')
       setUseMockAuth(true)
+      seedDefaultMockUser()
       return mockSignIn(email, password)
     }
 
