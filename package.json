@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001 2>&1 | tee dev.log",
-    "build": "next build && mkdir -p .next/standalone/.next && cp .next/routes-manifest.json .next/standalone/ && cp .next/build-manifest.json .next/standalone/ && cp .next/prerender-manifest.json .next/standalone/ && cp .next/app-build-manifest.json .next/standalone/ && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
-    "start": "NODE_ENV=production node .next/standalone/server.js 2>&1 | tee server.log",
+    "build": "next build",
+    "start": "NODE_ENV=production next start -p 3001 2>&1 | tee server.log",
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
