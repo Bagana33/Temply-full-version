@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Standalone output is only for self-hosting, not for Vercel
-  // output: "standalone",
+  // Ensure Vercel can find `.next/standalone/**` artifacts referenced during deploy
+  output: "standalone",
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,
