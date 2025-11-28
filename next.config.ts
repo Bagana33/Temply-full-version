@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Ensure Vercel can find `.next/standalone/**` artifacts referenced during deploy
-  output: "standalone",
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,
