@@ -23,7 +23,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
-  const { signUp } = useAuth()
+  const { signUp, signIn, user } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,12 +43,24 @@ export default function RegisterPage() {
       return
     }
 
-    const { error } = await signUp(email, password, name, role)
+    const { error: signUpError } = await signUp(email, password, name, role)
     
-    if (error) {
-      setError(error.message)
-    } else {
+    if (signUpError) {
+      setError(signUpError.message)
+      setLoading(false)
+      return
+    }
+
+    // Sign up хийсний дараа шууд sign in хийх (auto-login)
+    // Mock auth-д шууд session үүснэ, Supabase auth-д sign in хийх хэрэгтэй
+    const { error: signInError } = await signIn(email, password)
+    
+    if (signInError) {
+      // Sign up амжилттай, гэхдээ sign in алдаатай - login хуудас руу redirect
       router.push('/auth/login?message=registration-success')
+    } else {
+      // Амжилттай - account хуудас руу redirect
+      router.push('/account')
     }
     
     setLoading(false)

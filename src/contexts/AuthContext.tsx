@@ -312,7 +312,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return mockSignUp(email, password, name, userRole)
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -328,6 +328,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUseMockAuth(true)
       seedDefaultMockUser()
       return mockSignUp(email, password, name, userRole)
+    }
+
+    // Sign up амжилттай бол session шууд үүснэ (email confirmation идэвхгүй бол)
+    if (data?.session) {
+      setSession(data.session)
+      setUser(data.session.user)
+      setRole((data.session.user?.user_metadata?.role as UserRole) ?? null)
     }
 
     return { error }
