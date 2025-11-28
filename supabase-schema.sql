@@ -1,6 +1,56 @@
--- Create custom users table to extend auth.users
+-- ============================================
+-- TEMPLY DATABASE SCHEMA
+-- Supabase SQL Editor дээр бүхэлд нь paste хийж ажиллуулна
+-- ============================================
+
+-- ============================================
+-- SECTION 1: DROP EXISTING OBJECTS (if needed)
+-- ============================================
+
+-- Drop existing triggers
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
+DROP TRIGGER IF EXISTS update_templates_updated_at ON public.templates;
+
+-- Drop existing functions
+DROP FUNCTION IF EXISTS public.handle_new_user();
+DROP FUNCTION IF EXISTS public.update_updated_at_column();
+
+-- Drop existing policies (will be recreated below)
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.users;
+DROP POLICY IF EXISTS "Admins can view all users" ON public.users;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.users;
+DROP POLICY IF EXISTS "Anyone can view approved templates" ON public.templates;
+DROP POLICY IF EXISTS "Creators can view their own templates" ON public.templates;
+DROP POLICY IF EXISTS "Admins can view all templates" ON public.templates;
+DROP POLICY IF EXISTS "Creators can insert their own templates" ON public.templates;
+DROP POLICY IF EXISTS "Creators can update their own templates" ON public.templates;
+DROP POLICY IF EXISTS "Admins can update any template" ON public.templates;
+DROP POLICY IF EXISTS "Users can view their own purchases" ON public.purchases;
+DROP POLICY IF EXISTS "Admins can view all purchases" ON public.purchases;
+DROP POLICY IF EXISTS "System can insert purchases" ON public.purchases;
+DROP POLICY IF EXISTS "Users can view their own downloads" ON public.downloads;
+DROP POLICY IF EXISTS "Admins can view all downloads" ON public.downloads;
+DROP POLICY IF EXISTS "System can insert downloads" ON public.downloads;
+DROP POLICY IF EXISTS "Users can view their own membership" ON public.membership;
+DROP POLICY IF EXISTS "Admins can view all memberships" ON public.membership;
+DROP POLICY IF EXISTS "System can manage membership" ON public.membership;
+DROP POLICY IF EXISTS "Users can view their own cart items" ON public.cart_items;
+DROP POLICY IF EXISTS "Users can manage their own cart items" ON public.cart_items;
+DROP POLICY IF EXISTS "Creators can view their own payouts" ON public.payouts;
+DROP POLICY IF EXISTS "Admins can manage all payouts" ON public.payouts;
+DROP POLICY IF EXISTS "Anyone can view reviews" ON public.reviews;
+DROP POLICY IF EXISTS "Users can insert their own reviews" ON public.reviews;
+DROP POLICY IF EXISTS "Users can update their own reviews" ON public.reviews;
+DROP POLICY IF EXISTS "Admins can manage all reviews" ON public.reviews;
+
+-- ============================================
+-- SECTION 2: CREATE TABLES
+-- ============================================
+
+-- Users table (extends auth.users)
 CREATE TABLE IF NOT EXISTS public.users (
-  id UUID REFERENCES auth.users(id) PRIMARY KEY,
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   role TEXT CHECK (role IN ('USER', 'CREATOR', 'ADMIN')) NOT NULL DEFAULT 'USER',
@@ -8,7 +58,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create templates table
+-- Templates table
 CREATE TABLE IF NOT EXISTS public.templates (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
@@ -26,7 +76,7 @@ CREATE TABLE IF NOT EXISTS public.templates (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create purchases table
+-- Purchases table
 CREATE TABLE IF NOT EXISTS public.purchases (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
@@ -35,7 +85,7 @@ CREATE TABLE IF NOT EXISTS public.purchases (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create downloads table
+-- Downloads table
 CREATE TABLE IF NOT EXISTS public.downloads (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
@@ -43,7 +93,7 @@ CREATE TABLE IF NOT EXISTS public.downloads (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create membership table
+-- Membership table
 CREATE TABLE IF NOT EXISTS public.membership (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE UNIQUE,
@@ -53,15 +103,16 @@ CREATE TABLE IF NOT EXISTS public.membership (
   end_date TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
--- Create cart_items table
+-- Cart items table
 CREATE TABLE IF NOT EXISTS public.cart_items (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
   template_id UUID REFERENCES public.templates(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, template_id)
 );
 
--- Create payouts table
+-- Payouts table
 CREATE TABLE IF NOT EXISTS public.payouts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   creator_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
@@ -73,17 +124,21 @@ CREATE TABLE IF NOT EXISTS public.payouts (
   paid_at TIMESTAMP WITH TIME ZONE
 );
 
--- Create reviews table
+-- Reviews table
 CREATE TABLE IF NOT EXISTS public.reviews (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
   template_id UUID REFERENCES public.templates(id) ON DELETE CASCADE,
   rating INTEGER CHECK (rating >= 1 AND rating <= 5) NOT NULL,
   comment TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, template_id)
 );
 
--- Enable Row Level Security
+-- ============================================
+-- SECTION 3: ENABLE ROW LEVEL SECURITY
+-- ============================================
+
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchases ENABLE ROW LEVEL SECURITY;
@@ -93,7 +148,10 @@ ALTER TABLE public.cart_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payouts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 
--- Create indexes for better performance
+-- ============================================
+-- SECTION 4: CREATE INDEXES
+-- ============================================
+
 CREATE INDEX IF NOT EXISTS idx_templates_creator_id ON public.templates(creator_id);
 CREATE INDEX IF NOT EXISTS idx_templates_status ON public.templates(status);
 CREATE INDEX IF NOT EXISTS idx_templates_category ON public.templates(category);
@@ -102,8 +160,13 @@ CREATE INDEX IF NOT EXISTS idx_downloads_user_id ON public.downloads(user_id);
 CREATE INDEX IF NOT EXISTS idx_cart_items_user_id ON public.cart_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_payouts_creator_id ON public.payouts(creator_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_template_id ON public.reviews(template_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON public.reviews(user_id);
 
--- Function to handle user creation
+-- ============================================
+-- SECTION 5: CREATE FUNCTIONS
+-- ============================================
+
+-- Function to automatically create user profile when auth user is created
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -113,17 +176,43 @@ BEGIN
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'name', 'Нэргүй хэрэглэгч'),
     COALESCE(NEW.raw_user_meta_data->>'role', 'USER')
-  );
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger to create user profile on signup
-CREATE OR REPLACE TRIGGER on_auth_user_created
+-- Function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================
+-- SECTION 6: CREATE TRIGGERS
+-- ============================================
+
+-- Trigger: Create user profile when auth user signs up
+CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- RLS Policies
+-- Trigger: Update users.updated_at
+CREATE TRIGGER update_users_updated_at
+  BEFORE UPDATE ON public.users
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Trigger: Update templates.updated_at
+CREATE TRIGGER update_templates_updated_at
+  BEFORE UPDATE ON public.templates
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- ============================================
+-- SECTION 7: ROW LEVEL SECURITY POLICIES
+-- ============================================
 
 -- Users table policies
 CREATE POLICY "Users can view their own profile" ON public.users
@@ -251,18 +340,6 @@ CREATE POLICY "Admins can manage all reviews" ON public.reviews
     )
   );
 
--- Update timestamp function
-CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Create triggers for updated_at
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users
-  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-CREATE TRIGGER update_templates_updated_at BEFORE UPDATE ON public.templates
-  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+-- ============================================
+-- COMPLETE!
+-- ============================================
