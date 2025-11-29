@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Search, Filter, Grid, List, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { Database } from '@/types/database'
+import { useAuth } from '@/contexts/AuthContext'
 
 type Template = {
   id: string
@@ -25,13 +26,14 @@ type Template = {
   views_count: number
   created_at: string
   updated_at: string
-  users: {
-    name: string
-  }
+  users?: {
+    name?: string | null
+  } | null
 }
 
 function TemplatesContent() {
   const searchParams = useSearchParams()
+  const { session } = useAuth()
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
@@ -83,13 +85,13 @@ function TemplatesContent() {
       params.append('status', 'APPROVED')
 
       const response = await fetch(`/api/templates?${params}`)
-      if (response.ok) {
-        const data = await response.json()
-        setTemplates(data)
-        setErrorMessage(null)
-      } else {
-        setErrorMessage('Загваруудыг ачаалах боломжгүй байна. Дахин оролдоно уу.')
+      if (!response.ok) {
+        throw new Error('Загваруудыг ачаалах боломжгүй байна. Дахин оролдоно уу.')
       }
+      const json = await response.json()
+      const data = Array.isArray(json) ? json : json.templates
+      setTemplates(data || [])
+      setErrorMessage(null)
     } catch (error) {
       setErrorMessage('Загваруудыг ачаалах боломжгүй байна. Сүлжээг шалгаад дахин оролдоно уу.')
     } finally {
@@ -100,9 +102,16 @@ function TemplatesContent() {
   const handleAddToCart = async (templateId: string) => {
     setErrorMessage(null)
     try {
+      if (!session) {
+        setErrorMessage('Нэвтэрч орсны дараа сагсанд нэмэх боломжтой')
+        return
+      }
       const response = await fetch('/api/cart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ template_id: templateId })
       })
       

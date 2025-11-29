@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ShoppingCart, Trash2, ArrowLeft, Loader2 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 type CartItem = {
   id: string
@@ -25,16 +26,30 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const { session, user } = useAuth()
 
   useEffect(() => {
-    fetchCart()
-  }, [])
+    if (session) {
+      fetchCart()
+    } else {
+      setLoading(false)
+    }
+  }, [session])
 
   const fetchCart = async () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch('/api/cart')
+      if (!session) {
+        setError('Нэвтэрч орсны дараа сагсыг харах боломжтой')
+        setItems([])
+        return
+      }
+      const response = await fetch('/api/cart', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      })
       if (!response.ok) {
         throw new Error('Сагс ачаалах боломжгүй байна')
       }
@@ -50,9 +65,15 @@ export default function CartPage() {
   const handleRemove = async (templateId?: string) => {
     try {
       setRemovingId(templateId ?? 'all')
+      if (!session) {
+        throw new Error('Нэвтэрсэн байх шаардлагатай')
+      }
       const url = templateId ? `/api/cart?template_id=${templateId}` : '/api/cart'
       const response = await fetch(url, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       })
       if (!response.ok) {
         throw new Error('Сагснаас хасахад алдаа гарлаа')
@@ -84,9 +105,11 @@ export default function CartPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Миний сагс</h1>
-            <p className="text-gray-500">Танд {items.length} загвар байна</p>
+            <p className="text-gray-500">
+              {user ? `Танд ${items.length} загвар байна` : 'Нэвтэрч орж сагсаа үзнэ үү'}
+            </p>
           </div>
-          {items.length > 0 && (
+          {items.length > 0 && user && (
             <Button
               variant="outline"
               onClick={() => handleRemove()}
@@ -206,4 +229,3 @@ export default function CartPage() {
     </div>
   )
 }
-
