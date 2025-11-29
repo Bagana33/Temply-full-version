@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,13 +30,7 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  // Хэрэглэгчийн мэдээлэл авах
-  // useAuth context-оос user-г авна
-  // import { useAuth } from '@/contexts/AuthContext'
-  // const { user } = useAuth()
-  // demo: const user = { id: 'demo-user-id' }
-  // Жинхэнэ төсөлд useAuth-г ашиглана
-  const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('temply-current-user') || '{}') : {}
+  const { user, session } = useAuth()
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({
@@ -51,9 +46,17 @@ export default function UploadPage() {
     setError(null)
 
     try {
+      const accessToken = session?.access_token
+      if (!user || !accessToken) {
+        throw new Error('Нэвтэрсэн байх шаардлагатай')
+      }
+
       const response = await fetch('/api/templates', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        },
         body: JSON.stringify({
           title: form.title,
           description: form.description,
@@ -62,7 +65,7 @@ export default function UploadPage() {
           canva_link: form.canva_link,
           category: form.category,
           tags: form.tags.split(',').map((tag) => tag.trim()),
-          creator_id: user?.id || '',
+          creator_id: user.id,
           created_at: new Date().toISOString()
         })
       })
@@ -188,4 +191,3 @@ export default function UploadPage() {
     </ProtectedRoute>
   )
 }
-

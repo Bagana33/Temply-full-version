@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase, supabaseAdmin } from '@/lib/supabaseClient'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -8,10 +8,11 @@ export async function GET(request: NextRequest) {
   const sort = searchParams.get('sort') || 'created_at'
   const status = searchParams.get('status')
 
-  if (!supabase) {
+  const readClient = supabase ?? supabaseAdmin
+  if (!readClient) {
     return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 })
   }
-  let query = supabase.from('templates').select('*')
+  let query = readClient.from('templates').select('*')
 
   if (status) {
     query = query.eq('status', status)
@@ -34,27 +35,51 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(data)
 }
 
+const getAccessToken = (request: NextRequest) => {
+  const authHeader = request.headers.get('authorization')
+  if (authHeader?.toLowerCase().startsWith('bearer ')) {
+    return authHeader.slice(7)
+  }
+  const cookieToken = request.cookies.get('sb-access-token')?.value
+  return cookieToken || null
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    // Insert type from Database
-    if (!supabase) {
+    const client = supabaseAdmin ?? supabase
+    if (!client) {
       return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 })
     }
+
+    const accessToken = getAccessToken(request)
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Нэвтэрсэн байх шаардлагатай' }, { status: 401 })
+    }
+
+    const { data: userData, error: userError } = await (supabaseAdmin ?? supabase)!.auth.getUser(accessToken)
+    if (userError || !userData?.user) {
+      return NextResponse.json({ error: 'Нэвтрэх мэдээлэл буруу байна' }, { status: 401 })
+    }
+
     const templateData: import('@/types/database').Database['public']['Tables']['templates']['Insert'] = {
       ...body,
+      creator_id: userData.user.id,
       status: 'PENDING',
       downloads_count: 0,
       views_count: 0
     }
-    const { data, error } = await supabase
+
+    const { data, error } = await client
       .from('templates')
       .insert([templateData])
       .select()
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      .single()
+
+    if (error || !data) {
+      return NextResponse.json({ error: error?.message || 'Insert failed' }, { status: 400 })
     }
-    return NextResponse.json(data[0], { status: 201 })
+    return NextResponse.json(data, { status: 201 })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create template' }, { status: 400 })
   }
