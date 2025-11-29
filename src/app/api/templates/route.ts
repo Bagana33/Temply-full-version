@@ -1,18 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, supabaseAdmin } from '@/lib/supabaseClient'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
+  const supabase = createServerSupabaseClient()
   const { searchParams } = new URL(request.url)
   const search = searchParams.get('search')
   const category = searchParams.get('category')
   const sort = searchParams.get('sort') || 'created_at'
   const status = searchParams.get('status')
 
-  const readClient = supabase ?? supabaseAdmin
-  if (!readClient) {
-    return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 })
-  }
-  let query = readClient.from('templates').select('*')
+  let query = supabase
+    .from('templates')
+    .select(`
+      id,
+      title,
+      description,
+      price,
+      thumbnail_url,
+      status,
+      creator_id,
+      users ( id, name )
+    `)
 
   if (status) {
     query = query.eq('status', status)
@@ -23,16 +31,15 @@ export async function GET(request: NextRequest) {
   if (search) {
     query = query.ilike('title', `%${search}%`)
   }
-  // TODO: Add more search logic for description/tags if needed
 
-  // Sorting
   query = query.order(sort, { ascending: false })
 
   const { data, error } = await query
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  return NextResponse.json(data)
+
+  return NextResponse.json({ templates: data ?? [] })
 }
 
 const getAccessToken = (request: NextRequest) => {
@@ -46,39 +53,52 @@ const getAccessToken = (request: NextRequest) => {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createServerSupabaseClient()
     const body = await request.json()
-    const client = supabaseAdmin ?? supabase
-    if (!client) {
-      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 })
-    }
 
-    const accessToken = getAccessToken(request)
+    const accessToken =
+      request.headers.get('Authorization')?.replace('Bearer ', '') ||
+      getAccessToken(request)
+
     if (!accessToken) {
       return NextResponse.json({ error: 'Нэвтэрсэн байх шаардлагатай' }, { status: 401 })
     }
 
-    const { data: userData, error: userError } = await (supabaseAdmin ?? supabase)!.auth.getUser(accessToken)
-    if (userError || !userData?.user) {
+    const { data: authData, error: authError } = await supabase.auth.getUser(accessToken)
+    if (authError || !authData?.user) {
       return NextResponse.json({ error: 'Нэвтрэх мэдээлэл буруу байна' }, { status: 401 })
     }
 
-    const templateData: import('@/types/database').Database['public']['Tables']['templates']['Insert'] = {
-      ...body,
-      creator_id: userData.user.id,
+    const insertPayload: import('@/types/database').Database['public']['Tables']['templates']['Insert'] = {
+      title: body.title,
+      description: body.description,
+      price: body.price,
+      thumbnail_url: body.thumbnail_url,
+      canva_link: body.canva_link,
+      category: body.category,
+      tags: body.tags,
+      creator_id: authData.user.id,
       status: 'PENDING',
       downloads_count: 0,
       views_count: 0
     }
 
-    const { data, error } = await client
+    const { data, error } = await supabase
       .from('templates')
-      .insert([templateData])
-      .select()
+      .insert(insertPayload)
+      .select(`
+        id,
+        title,
+        price,
+        thumbnail_url,
+        users ( id, name )
+      `)
       .single()
 
     if (error || !data) {
-      return NextResponse.json({ error: error?.message || 'Insert failed' }, { status: 400 })
+      return NextResponse.json({ error: error?.message || 'Insert failed' }, { status: 500 })
     }
+
     return NextResponse.json(data, { status: 201 })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create template' }, { status: 400 })

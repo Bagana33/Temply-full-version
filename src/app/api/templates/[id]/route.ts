@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabaseClient'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const templateId = params.id
-  if (!supabase) {
-    return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 })
-  }
+  const supabase = createServerSupabaseClient()
   const { data, error } = await supabase.from('templates').select('*').eq('id', templateId).single()
   if (error || !data) {
     return NextResponse.json({ error: error?.message || 'Template not found' }, { status: 404 })
@@ -24,9 +22,7 @@ export async function PATCH(
   try {
     const templateId = params.id
     const body = await request.json()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 })
-    }
+    const supabase = createServerSupabaseClient()
     const updateData: Partial<import('@/types/database').Database['public']['Tables']['templates']['Update']> = { ...body, updated_at: new Date().toISOString() };
     const { data, error } = await supabase
       .from('templates')
@@ -48,9 +44,7 @@ export async function DELETE(
 ) {
   try {
     const templateId = params.id
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 })
-    }
+    const supabase = createServerSupabaseClient()
     const { error } = await supabase.from('templates').delete().eq('id', templateId)
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
