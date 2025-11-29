@@ -1,92 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-// Mock data for development
-const mockTemplates = [
-  {
-    id: '1',
-    title: 'Сошиал медиа пост загвар',
-    description: 'Instagram, Facebook зориулсан мэдээллийн пост загвар. Энгийн, гоёмсгой дизайн. Энэ загвар нь таны брэндийг онцгой тодотгох болно. Орчин үеийн дизайн, уян хатан хэмжээ.',
-    price: 5000,
-    thumbnail_url: 'https://via.placeholder.com/400x300/6C5CE7/FFFFFF?text=Social+Media',
-    canva_link: 'https://canva.com/template/1',
-    category: 'Нийгмийн сүлжээ',
-    tags: ['сошиал', 'пост', 'мэдээлэл'],
-    status: 'APPROVED',
-    creator_id: 'creator-1',
-    downloads_count: 150,
-    views_count: 1200,
-    created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-15T10:00:00Z',
-    users: {
-      name: 'Батбаатар'
-    }
-  },
-  {
-    id: '2',
-    title: 'Бизнес презентаци',
-    description: 'Бизнес уулзалт, танилцуулга зориулсан PowerPoint загвар. Мэргэжлийн, цэвэрхэн дизайн.',
-    price: 15000,
-    thumbnail_url: 'https://via.placeholder.com/400x300/00CEC9/FFFFFF?text=Business',
-    canva_link: 'https://canva.com/template/2',
-    category: 'Бизнес',
-    tags: ['презентаци', 'бизнес', 'уулзалт'],
-    status: 'APPROVED',
-    creator_id: 'creator-2',
-    downloads_count: 89,
-    views_count: 650,
-    created_at: '2024-01-10T10:00:00Z',
-    updated_at: '2024-01-10T10:00:00Z',
-    users: {
-      name: 'Сарангэрэл'
-    }
-  }
-]
-
-const mockReviews = [
-  {
-    id: '1',
-    rating: 5,
-    comment: 'Маш сайн загвар! Хурдан, хялбархан ашиглаж байна.',
-    users: {
-      name: 'Дорж'
-    },
-    created_at: '2024-01-16T10:00:00Z'
-  },
-  {
-    id: '2',
-    rating: 4,
-    comment: 'Гоё дизайн, чанартай бүтээл. Баярлалаа!',
-    users: {
-      name: 'Болор'
-    },
-    created_at: '2024-01-15T14:30:00Z'
-  }
-]
+import { supabase } from '@/lib/supabaseClient'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const templateId = params.id
-  
-  // Find template by ID
-  const template = mockTemplates.find(t => t.id === templateId)
-  
-  if (!template) {
-    return NextResponse.json(
-      { error: 'Template not found' },
-      { status: 404 }
-    )
+  if (!supabase) {
+    return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 })
   }
-
-  // Add mock reviews and related templates
-  const templateWithDetails = {
-    ...template,
-    reviews: mockReviews,
-    related_templates: mockTemplates.filter(t => t.id !== templateId).slice(0, 3)
+  const { data, error } = await supabase.from('templates').select('*').eq('id', templateId).single()
+  if (error || !data) {
+    return NextResponse.json({ error: error?.message || 'Template not found' }, { status: 404 })
   }
-
-  return NextResponse.json(templateWithDetails)
+  // TODO: Fetch reviews and related templates if needed
+  return NextResponse.json(data)
 }
 
 export async function PATCH(
@@ -96,29 +24,21 @@ export async function PATCH(
   try {
     const templateId = params.id
     const body = await request.json()
-    
-    // Mock update
-    const template = mockTemplates.find(t => t.id === templateId)
-    
-    if (!template) {
-      return NextResponse.json(
-        { error: 'Template not found' },
-        { status: 404 }
-      )
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 })
     }
-
-    const updatedTemplate = {
-      ...template,
-      ...body,
-      updated_at: new Date().toISOString()
+    const updateData: Partial<import('@/types/database').Database['public']['Tables']['templates']['Update']> = { ...body, updated_at: new Date().toISOString() };
+    const { data, error } = await supabase
+      .from('templates')
+      .update(updateData)
+      .eq('id', templateId)
+      .select();
+    if (error || !data || !data[0]) {
+      return NextResponse.json({ error: error?.message || 'Template not found' }, { status: 404 })
     }
-
-    return NextResponse.json(updatedTemplate)
+    return NextResponse.json(data[0])
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to update template' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Failed to update template' }, { status: 400 })
   }
 }
 
@@ -128,22 +48,15 @@ export async function DELETE(
 ) {
   try {
     const templateId = params.id
-    
-    // Mock deletion
-    const template = mockTemplates.find(t => t.id === templateId)
-    
-    if (!template) {
-      return NextResponse.json(
-        { error: 'Template not found' },
-        { status: 404 }
-      )
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 })
     }
-
+    const { error } = await supabase.from('templates').delete().eq('id', templateId)
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
     return NextResponse.json({ message: 'Template deleted successfully' })
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to delete template' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Failed to delete template' }, { status: 400 })
   }
 }

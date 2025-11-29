@@ -127,11 +127,17 @@ export default function RegisterPage() {
                     <SelectContent>
                       <SelectItem value="USER">Хэрэглэгч</SelectItem>
                       <SelectItem value="CREATOR">Дизайнер (Үүсгэгч)</SelectItem>
+                      <SelectItem value="ADMIN">Админ</SelectItem>
                     </SelectContent>
                   </Select>
                   {role === 'CREATOR' && (
                     <p className="text-sm text-gray-600 mt-1">
                       Дизайнерууд загвар байршуулж орлого олох боломжтой
+                    </p>
+                  )}
+                  {role === 'ADMIN' && (
+                    <p className="text-sm text-red-600 mt-1">
+                      Админ эрхтэй бүртгэл үүсгэх гэж байна!
                     </p>
                   )}
                 </div>

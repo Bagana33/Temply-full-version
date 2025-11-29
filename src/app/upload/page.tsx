@@ -29,6 +29,13 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Хэрэглэгчийн мэдээлэл авах
+  // useAuth context-оос user-г авна
+  // import { useAuth } from '@/contexts/AuthContext'
+  // const { user } = useAuth()
+  // demo: const user = { id: 'demo-user-id' }
+  // Жинхэнэ төсөлд useAuth-г ашиглана
+  const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('temply-current-user') || '{}') : {}
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({
@@ -54,7 +61,9 @@ export default function UploadPage() {
           thumbnail_url: form.thumbnail_url,
           canva_link: form.canva_link,
           category: form.category,
-          tags: form.tags.split(',').map((tag) => tag.trim())
+          tags: form.tags.split(',').map((tag) => tag.trim()),
+          creator_id: user?.id || '',
+          created_at: new Date().toISOString()
         })
       })
 

@@ -330,6 +330,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return mockSignUp(email, password, name, userRole)
     }
 
+    // Supabase Auth-д хэрэглэгч үүссэн бол public.users table-д insert хийнэ
+    if (data?.user) {
+      await supabase
+        .from('users')
+        .insert([
+          {
+            id: data.user.id,
+            email: data.user.email ?? '',
+            name: name,
+            role: userRole
+          }
+        ])
+    }
+
     // Sign up амжилттай бол session шууд үүснэ (email confirmation идэвхгүй бол)
     if (data?.session) {
       setSession(data.session)
