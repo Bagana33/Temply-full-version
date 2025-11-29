@@ -190,6 +190,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const client = supabase
 
+    // Load session from localStorage on refresh
+    if (client) {
+      const storedSession = typeof window !== 'undefined'
+        ? window.localStorage.getItem('temply-supabase-session')
+        : null
+      if (storedSession) {
+        const parsed = JSON.parse(storedSession)
+        setSession(parsed)
+        setUser(parsed?.user ?? null)
+        setRole((parsed?.user?.user_metadata?.role as UserRole) ?? null)
+        setLoading(false)
+      }
+    }
+
     if (!client) {
       setUseMockAuth(true)
       loadMockSession()
@@ -212,6 +226,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       setRole((session?.user?.user_metadata?.role as UserRole) ?? null)
+      // Save session to localStorage
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('temply-supabase-session', JSON.stringify(session))
+      }
       setLoading(false)
     }
 
@@ -223,6 +241,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       setRole((session?.user?.user_metadata?.role as UserRole) ?? null)
+      // Save session to localStorage
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('temply-supabase-session', JSON.stringify(session))
+      }
       setLoading(false)
     })
 
