@@ -3,11 +3,13 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
+import { UserRole } from '@/lib/role'
 
 type AuthContextType = {
   user: User | null
   session: Session | null
   isLoading: boolean
+  role: UserRole | null
   signUp: (email: string, password: string, name?: string, role?: string) => Promise<{ error: AuthError | null }>
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<{ error: AuthError | null }>
@@ -19,11 +21,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [role, setRole] = useState<UserRole | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setUser(data.session?.user ?? null)
+      const metaRole = (data.session?.user?.user_metadata?.role as UserRole | undefined) ?? null
+      setRole(metaRole)
       setIsLoading(false)
     })
   }, [])
@@ -34,6 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
       setUser(nextSession?.user ?? null)
+      const metaRole = (nextSession?.user?.user_metadata?.role as UserRole | undefined) ?? null
+      setRole(metaRole)
       setIsLoading(false)
     })
 
@@ -70,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     session,
     isLoading,
+    role,
     signUp,
     signIn,
     signOut

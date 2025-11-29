@@ -18,11 +18,11 @@ export function ProtectedRoute({
   allowedRoles, 
   fallbackPath = '/auth/login' 
 }: ProtectedRouteProps) {
-  const { user, loading, role } = useAuth()
+  const { user, isLoading, role } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (loading) return
+    if (isLoading) return
 
     if (!user) {
       router.push(fallbackPath)
@@ -38,9 +38,9 @@ export function ProtectedRoute({
       router.push('/unauthorized')
       return
     }
-  }, [user, loading, role, requiredRole, allowedRoles, fallbackPath, router])
+  }, [user, isLoading, role, requiredRole, allowedRoles, fallbackPath, router])
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
