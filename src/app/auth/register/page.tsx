@@ -46,7 +46,11 @@ export default function RegisterPage() {
     const { error: signUpError } = await signUp(email, password, name, role)
     
     if (signUpError) {
-      setError(signUpError.message)
+      const friendlyMessage =
+        signUpError.message === 'Failed to fetch'
+          ? 'Сүлжээний холболтоо шалгаад дахин оролдоно уу.'
+          : signUpError.message
+      setError(friendlyMessage)
       setLoading(false)
       return
     }

@@ -23,9 +23,11 @@ export default async function TemplateDetailPage({ params }: TemplateDetailPageP
       price,
       thumbnail_url,
       canva_link,
+      status,
       users ( id, name )
     `)
     .eq('id', id)
+    .eq('status', 'APPROVED')
     .single()
 
   if (!template) {

@@ -50,7 +50,6 @@ end $$;
 
 drop function if exists public.handle_new_user();
 drop function if exists public.update_updated_at_column();
-drop function if exists public.is_admin();
 
 -- Tables -------------------------------------------------------------------
 create table if not exists public.users (

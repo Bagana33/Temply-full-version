@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Shield, ClipboardCheck, Users, BarChart2 } from 'lucide-react'
+import { PendingTemplatesPanel } from './PendingTemplatesPanel'
 
 export default async function AdminPage() {
   const supabase = createServerSupabaseClient()
@@ -57,6 +58,8 @@ export default async function AdminPage() {
             </CardContent>
           </Card>
         </div>
+
+        <PendingTemplatesPanel />
       </div>
     </div>
   )

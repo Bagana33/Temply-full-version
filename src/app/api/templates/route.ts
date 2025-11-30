@@ -1,13 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
+const getAccessToken = (request: NextRequest) => {
+  const authHeader = request.headers.get('authorization')
+  if (authHeader?.toLowerCase().startsWith('bearer ')) {
+    return authHeader.slice(7)
+  }
+  const cookieToken = request.cookies.get('sb-access-token')?.value
+  return cookieToken || null
+}
+
 export async function GET(request: NextRequest) {
   const supabase = createServerSupabaseClient()
   const { searchParams } = new URL(request.url)
   const search = searchParams.get('search')
   const category = searchParams.get('category')
   const sort = searchParams.get('sort') || 'created_at'
-  const status = searchParams.get('status')
+  const status = searchParams.get('status') || 'APPROVED'
+
+  const accessToken =
+    request.headers.get('Authorization')?.replace('Bearer ', '') ||
+    getAccessToken(request)
+
+  let requesterId: string | null = null
+  let requesterRole: string | null = null
+
+  if (accessToken) {
+    const { data: authData } = await supabase.auth.getUser(accessToken)
+    requesterId = authData.user?.id ?? null
+    requesterRole = (authData.user?.user_metadata?.role as string) ?? null
+
+    if (requesterId && !requesterRole) {
+      const { data: userRow } = await supabase.from('users').select('role').eq('id', requesterId).single()
+      requesterRole = userRow?.role ?? null
+    }
+  }
+
+  const isAdmin = requesterRole === 'ADMIN'
+  const requiresProtectedAccess = status !== 'APPROVED'
+
+  if (requiresProtectedAccess && !requesterId) {
+    return NextResponse.json({ error: 'Энэ жагсаалтыг харах эрхгүй байна' }, { status: 401 })
+  }
 
   let query = supabase
     .from('templates')
@@ -18,18 +52,24 @@ export async function GET(request: NextRequest) {
       price,
       thumbnail_url,
       status,
+      category,
+      tags,
       creator_id,
+      created_at,
       users ( id, name )
     `)
 
-  if (status) {
-    query = query.eq('status', status)
-  }
+  query = query.eq('status', status)
+
   if (category) {
     query = query.eq('category', category)
   }
   if (search) {
     query = query.ilike('title', `%${search}%`)
+  }
+
+  if (requiresProtectedAccess && !isAdmin && requesterId) {
+    query = query.eq('creator_id', requesterId)
   }
 
   query = query.order(sort, { ascending: false })
@@ -40,15 +80,6 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({ templates: data ?? [] })
-}
-
-const getAccessToken = (request: NextRequest) => {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader?.toLowerCase().startsWith('bearer ')) {
-    return authHeader.slice(7)
-  }
-  const cookieToken = request.cookies.get('sb-access-token')?.value
-  return cookieToken || null
 }
 
 export async function POST(request: NextRequest) {
