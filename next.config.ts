@@ -1,5 +1,42 @@
 import type { NextConfig } from "next";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+let supabaseHostname: string | undefined
+
+if (supabaseUrl) {
+  try {
+    supabaseHostname = new URL(supabaseUrl).hostname
+  } catch {
+    supabaseHostname = undefined
+  }
+}
+
+const remotePatterns: NextConfig["images"]["remotePatterns"] = [
+  {
+    protocol: "https",
+    hostname: "via.placeholder.com",
+  },
+  {
+    protocol: "https",
+    hostname: "www.canva.com",
+  },
+  {
+    protocol: "https",
+    hostname: "images.pexels.com",
+  },
+  {
+    protocol: "https",
+    hostname: "images.unsplash.com",
+  },
+]
+
+if (supabaseHostname) {
+  remotePatterns.push({
+    protocol: "https",
+    hostname: supabaseHostname,
+  })
+}
+
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
@@ -12,12 +49,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "via.placeholder.com",
-      },
-    ],
+    remotePatterns,
   },
 };
 

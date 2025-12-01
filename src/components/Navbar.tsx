@@ -1,33 +1,39 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
-import { 
-  ShoppingCart, 
-  User, 
-  Settings, 
-  LogOut, 
-  LayoutDashboard, 
-  Upload, 
+import { TEMPLATE_CATEGORIES } from '@/lib/templateCategories'
+import {
+  ShoppingCart,
+  User,
+  Settings,
+  LogOut,
+  LayoutDashboard,
+  Upload,
   Crown,
   Menu,
-  X
+  X,
+  Search,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export function Navbar() {
-  const { user, signOut, role } = useAuth()
+  const { user, signOut, role, session } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [cartCount, setCartCount] = useState(0)
+  const router = useRouter()
 
   const handleSignOut = async () => {
     await signOut()
@@ -47,7 +53,7 @@ export function Navbar() {
   const getDashboardLabel = () => {
     switch (role) {
       case 'ADMIN':
-        return 'Админ'
+        return 'Админ самбар'
       case 'CREATOR':
         return 'Дашборд'
       default:
@@ -55,10 +61,47 @@ export function Navbar() {
     }
   }
 
+  // Cart count fetcher
+  useEffect(() => {
+    const fetchCartCount = async () => {
+      if (!session?.access_token) {
+        setCartCount(0)
+        return
+      }
+      try {
+        const res = await fetch('/api/cart', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        setCartCount(Array.isArray(data) ? data.length : 0)
+      } catch {
+        // ignore
+      }
+    }
+
+    fetchCartCount()
+
+    const handler = () => fetchCartCount()
+    window.addEventListener('cart-updated', handler)
+    return () => window.removeEventListener('cart-updated', handler)
+  }, [session?.access_token])
+
+  const runSearch = () => {
+    const query = searchQuery.trim()
+    if (!query) {
+      router.push('/templates')
+      return
+    }
+    router.push(`/templates?search=${encodeURIComponent(query)}`)
+  }
+
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-16 gap-4">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
@@ -67,8 +110,9 @@ export function Navbar() {
             <span className="font-bold text-xl text-gray-900">Temply</span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          {/* Desktop Navigation + Search */}
+          <div className="hidden md:flex items-center flex-1 gap-6">
+            <div className="flex items-center space-x-6">
             <Link href="/templates" className="text-gray-700 hover:text-primary transition-colors">
               Загварууд
             </Link>
@@ -78,6 +122,64 @@ export function Navbar() {
             <Link href="/creator" className="text-gray-700 hover:text-primary transition-colors">
               Дизайнер болох
             </Link>
+            </div>
+
+            {/* Search bar (desktop only) */}
+            <div className="hidden lg:flex flex-1">
+              <div className="flex w-full items-center rounded-full border border-gray-300 bg-white px-2 py-1.5 shadow-sm">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 px-3 py-1 text-sm font-medium text-gray-700 border-r border-gray-200"
+                    >
+                      <Menu className="h-4 w-4" />
+                      <span>Ангилал</span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuItem
+                      onClick={() => router.push('/templates')}
+                    >
+                      Бүх ангилал
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {TEMPLATE_CATEGORIES.map((category) => (
+                      <DropdownMenuItem
+                        key={category}
+                        onClick={() =>
+                          router.push(
+                            `/templates?category=${encodeURIComponent(category)}`,
+                          )
+                        }
+                      >
+                        {category}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <input
+                  type="text"
+                  placeholder="Search for anything"
+                  className="flex-1 border-0 bg-transparent px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      runSearch()
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+                  onClick={runSearch}
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Right side items */}
@@ -86,8 +188,13 @@ export function Navbar() {
               <>
                 {/* Cart */}
                 <Link href="/cart">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className="relative">
                     <ShoppingCart className="h-4 w-4" />
+                    {cartCount > 0 && (
+                      <span className="absolute -right-1 -top-1 rounded-full bg-red-500 px-1.5 text-[10px] font-semibold text-white">
+                        {cartCount}
+                      </span>
+                    )}
                   </Button>
                 </Link>
 

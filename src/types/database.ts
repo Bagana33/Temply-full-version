@@ -345,6 +345,7 @@ export type Database = {
           description: string
           downloads_count: number | null
           id: string
+          preview_images: string[] | null
           price: number
           status: string | null
           tags: string[] | null
@@ -361,6 +362,7 @@ export type Database = {
           description: string
           downloads_count?: number | null
           id?: string
+          preview_images?: string[] | null
           price: number
           status?: string | null
           tags?: string[] | null
@@ -377,6 +379,7 @@ export type Database = {
           description?: string
           downloads_count?: number | null
           id?: string
+          preview_images?: string[] | null
           price?: number
           status?: string | null
           tags?: string[] | null

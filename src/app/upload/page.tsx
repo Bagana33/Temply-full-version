@@ -13,12 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { UploadCloud, ArrowLeft } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { TEMPLATE_CATEGORIES } from '@/lib/templateCategories'
 
 const defaultTemplate = {
   title: '',
   description: '',
   price: '',
-  thumbnail_url: '',
   canva_link: '',
   category: '',
   tags: ''
@@ -31,12 +32,45 @@ export default function UploadPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const { user, session } = useAuth()
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
+  const [previewFiles, setPreviewFiles] = useState<(File | null)[]>([null, null, null, null])
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({
       ...prev,
       [event.target.name]: event.target.value
     }))
+  }
+
+  const handleThumbnailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null
+    setThumbnailFile(file)
+  }
+
+  const handlePreviewChange = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null
+    setPreviewFiles((prev) => {
+      const next = [...prev]
+      next[index] = file
+      return next
+    })
+  }
+
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await fetch('/api/upload-image', {
+      method: 'POST',
+      body: formData
+    })
+
+    if (!response.ok) {
+      throw new Error('Зураг upload хийхэд алдаа гарлаа')
+    }
+
+    const data = await response.json()
+    return data.url as string
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -51,6 +85,21 @@ export default function UploadPage() {
         throw new Error('Нэвтэрсэн байх шаардлагатай')
       }
 
+      if (!thumbnailFile) {
+        throw new Error('Үндсэн зургийг заавал оруулах шаардлагатай')
+      }
+
+      // Эхлээд зургуудыг upload хийж URL-уудыг авна
+      const thumbnailUrl = await uploadImage(thumbnailFile)
+
+      const previewUrls: string[] = []
+      for (const file of previewFiles) {
+        if (file) {
+          const url = await uploadImage(file)
+          previewUrls.push(url)
+        }
+      }
+
       const response = await fetch('/api/templates', {
         method: 'POST',
         headers: {
@@ -61,8 +110,9 @@ export default function UploadPage() {
           title: form.title,
           description: form.description,
           price: Number(form.price),
-          thumbnail_url: form.thumbnail_url,
+          thumbnail_url: thumbnailUrl,
           canva_link: form.canva_link,
+          preview_images: previewUrls,
           category: form.category,
           tags: form.tags.split(',').map((tag) => tag.trim()),
           creator_id: user.id,
@@ -75,6 +125,8 @@ export default function UploadPage() {
       }
 
       setForm(defaultTemplate)
+      setThumbnailFile(null)
+      setPreviewFiles([null, null, null, null])
       setMessage('Загвар амжилттай илгээгдлээ! Хяналтын баг шалгаад мэдэгдэнэ.')
       setTimeout(() => {
         router.push('/dashboard')
@@ -129,36 +181,90 @@ export default function UploadPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="price">Үнэ (₮)</Label>
-                    <Input id="price" name="price" type="number" min="0" required value={form.price} onChange={handleChange} />
+                    <Input
+                      id="price"
+                      name="price"
+                      type="number"
+                      min="0"
+                      required
+                      value={form.price}
+                      onChange={handleChange}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category">Ангилал</Label>
-                    <Input id="category" name="category" required value={form.category} onChange={handleChange} />
+                    <Select
+                      value={form.category}
+                      onValueChange={(value) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          category: value
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="category">
+                        <SelectValue placeholder="Ангиллаа сонгоно уу" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TEMPLATE_CATEGORIES.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="thumbnail_url">Thumbnail холбоос</Label>
-                    <Input
-                      id="thumbnail_url"
-                      name="thumbnail_url"
-                      placeholder="https://..."
-                      required
-                      value={form.thumbnail_url}
-                      onChange={handleChange}
-                    />
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="thumbnail">Үндсэн зураг (thumbnail)</Label>
+                      <Input
+                        id="thumbnail"
+                        type="file"
+                        accept="image/*"
+                        required
+                        onChange={handleThumbnailChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="canva_link">Canva холбоос</Label>
+                      <Input
+                        id="canva_link"
+                        name="canva_link"
+                        placeholder="https://canva.com/..."
+                        required
+                        value={form.canva_link}
+                        onChange={handleChange}
+                      />
+                    </div>
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="canva_link">Canva холбоос</Label>
-                    <Input
-                      id="canva_link"
-                      name="canva_link"
-                      placeholder="https://canva.com/..."
-                      required
-                      value={form.canva_link}
-                      onChange={handleChange}
-                    />
+                    <Label>Нэмэлт preview зураг (ихдээ 4 ширхэг)</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handlePreviewChange(0, e)}
+                      />
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handlePreviewChange(1, e)}
+                      />
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handlePreviewChange(2, e)}
+                      />
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handlePreviewChange(3, e)}
+                      />
+                    </div>
                   </div>
                 </div>
 

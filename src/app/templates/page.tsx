@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Search, Filter, Grid, List, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { Database } from '@/types/database'
 import { useAuth } from '@/contexts/AuthContext'
+import { TEMPLATE_CATEGORIES, TEMPLATE_QUICK_FILTERS } from '@/lib/templateCategories'
 
 type Template = {
   id: string
@@ -17,6 +18,7 @@ type Template = {
   description: string
   price: number
   thumbnail_url: string
+  preview_images?: string[] | null
   canva_link: string
   category: string
   tags: string[]
@@ -43,16 +45,7 @@ function TemplatesContent() {
   const [showFilters, setShowFilters] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const categories = [
-    'Нийгмийн сүлжээ',
-    'Бизнес',
-    'Боловсрол',
-    'Маркетинг',
-    'Эрүүл мэнд',
-    'Хоол хүнс',
-    'Аялал жуулчлал',
-    'Технологи'
-  ]
+  const categories = [...TEMPLATE_CATEGORIES]
 
   const sortOptions = [
     { value: 'created_at', label: 'Шинээр нэмэгдсэн' },
@@ -62,13 +55,7 @@ function TemplatesContent() {
     { value: 'title', label: 'Нэрээр' }
   ]
 
-  const quickFilters = [
-    { value: 'all', label: 'Бүх загвар' },
-    { value: 'Нийгмийн сүлжээ', label: 'Сошиал' },
-    { value: 'Бизнес', label: 'Бизнес' },
-    { value: 'Боловсрол', label: 'Боловсрол' },
-    { value: 'Маркетинг', label: 'Маркетинг' },
-  ]
+  const quickFilters = TEMPLATE_QUICK_FILTERS
 
   useEffect(() => {
     fetchTemplates()
@@ -116,8 +103,8 @@ function TemplatesContent() {
       })
       
       if (response.ok) {
-        // Show success message
-        alert('Загвар сагсанд нэмэгдлээ!')
+        // Global event to let Navbar/cart update its count
+        window.dispatchEvent(new CustomEvent('cart-updated'))
         setErrorMessage(null)
       }
     } catch (error) {
@@ -153,109 +140,6 @@ function TemplatesContent() {
           {errorMessage && (
             <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {errorMessage}
-            </div>
-          )}
-        </div>
-
-        {/* Search and Filters */}
-        <div className="rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm space-y-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-            {/* Search */}
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-                <Input
-                  placeholder="Загвар хайх..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            {/* Category Filter */}
-            <div className="lg:w-48">
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Ангилал" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Бүх ангилал</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Sort */}
-            <div className="lg:w-48">
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Эрэмбэлэх" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sortOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* View Mode */}
-            <div className="flex gap-2">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('grid')}
-              >
-                <Grid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Quick Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            {quickFilters.map((filter) => {
-              const active = selectedCategory === filter.value
-              return (
-                <Button
-                  key={filter.value}
-                  variant={active ? 'default' : 'outline'}
-                  size="sm"
-                  className={active ? 'bg-primary text-white' : 'bg-white'}
-                  onClick={() => setSelectedCategory(filter.value)}
-                >
-                  {filter.label}
-                </Button>
-              )
-            })}
-          </div>
-
-          {/* Active Filters */}
-          {(searchTerm || (selectedCategory && selectedCategory !== 'all')) && (
-            <div className="flex flex-wrap gap-2">
-              {searchTerm && (
-                <Badge variant="secondary" className="cursor-pointer" onClick={() => setSearchTerm('')}>
-                  Хайлт: {searchTerm} ×
-                </Badge>
-              )}
-              {selectedCategory && selectedCategory !== 'all' && (
-                <Badge variant="secondary" className="cursor-pointer" onClick={() => setSelectedCategory('all')}>
-                  Ангилал: {selectedCategory} ×
-                </Badge>
-              )}
             </div>
           )}
         </div>

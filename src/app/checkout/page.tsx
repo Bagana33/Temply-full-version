@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle2, CreditCard, ArrowLeft } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 type TemplateInfo = {
   id: string
@@ -20,6 +21,7 @@ type TemplateInfo = {
 function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { session } = useAuth()
   const templateId = searchParams.get('template')
   const [template, setTemplate] = useState<TemplateInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -56,13 +58,38 @@ function CheckoutContent() {
   const handlePayment = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!template) return
+    if (!session?.access_token) {
+      setError('Төлбөр хийхийн өмнө нэвтэрнэ үү.')
+      return
+    }
 
+    try {
     setIsPaying(true)
-    setTimeout(() => {
+      setError(null)
+
+      const response = await fetch('/api/purchases', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ template_id: template.id }),
+      })
+
+      const payload = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(payload.error || 'Төлбөр амжилтгүй боллоо')
+      }
+
+      // Худалдан авалт амжилттай → account эсвэл templates/[id] рүү шилжүүлэх
+      router.push(`/templates/${template.id}`)
+      alert('Худалдан авалт амжилттай! Одоо энэхүү загварыг татах боломжтой.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Төлбөр хийх үед алдаа гарлаа')
+    } finally {
       setIsPaying(false)
-      router.push('/templates')
-      alert('Төлбөр амжилттай! Хувийн имэйл рүү холбоос илгээлээ.')
-    }, 1500)
+    }
   }
 
   return (
@@ -150,7 +177,7 @@ function CheckoutContent() {
                   <Alert className="bg-green-50 text-green-700 border-green-200">
                     <CheckCircle2 className="h-4 w-4" />
                     <AlertDescription>
-                      Төлбөр амжилттай болсны дараа таны имэйл хаяг руу Canva холбоос илгээнэ.
+                      Төлбөр амжилттай болсны дараа энэхүү загварыг татах боломжтой болно.
                     </AlertDescription>
                   </Alert>
                 </>
@@ -159,7 +186,7 @@ function CheckoutContent() {
               )}
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <CreditCard className="h-4 w-4" />
-                Төлбөрийг Stripe/Голомт банкны туршилтын горимоор боловсруулж байна.
+                Төлбөрийг туршилтын горимоор боловсруулж байна (жинхэнэ карт шаардахгүй).
               </div>
             </CardContent>
           </Card>
@@ -182,3 +209,4 @@ export default function CheckoutPage() {
     </Suspense>
   )
 }
+

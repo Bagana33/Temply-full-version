@@ -80,8 +80,15 @@ export default function CartPage() {
       }
       if (templateId) {
         setItems((prev) => prev.filter((item) => item.template_id !== templateId))
+        // Navbar cart badge шинэчлэх
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('cart-updated'))
+        }
       } else {
         setItems([])
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('cart-updated'))
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Алдаа гарлаа')

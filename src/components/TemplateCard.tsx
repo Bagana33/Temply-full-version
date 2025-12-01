@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { ShoppingCart, Download, Eye, ExternalLink } from 'lucide-react'
+import { ShoppingCart, ExternalLink } from 'lucide-react'
 
 type TemplateCardProps = {
   template: {
@@ -14,6 +14,7 @@ type TemplateCardProps = {
     description?: string
     price: number
     thumbnail_url?: string | null
+    preview_images?: string[] | null
     status?: 'PENDING' | 'APPROVED' | 'REJECTED'
     category?: string
     tags?: string[] | null
@@ -58,8 +59,10 @@ export function TemplateCard({ template, onAddToCart, onBuyNow }: TemplateCardPr
   }
 
   const priceLabel = `${formatPrice(template.price)}₮`
-  const authorName = template.users?.name ?? 'Нэргүй хэрэглэгч'
-  const thumbnail = template.thumbnail_url ?? '/placeholder.png'
+  const mainImage =
+    (template.preview_images && template.preview_images[0]) ||
+    template.thumbnail_url ||
+    '/placeholder.png'
   const tags = template.tags ?? []
 
   return (
@@ -68,7 +71,7 @@ export function TemplateCard({ template, onAddToCart, onBuyNow }: TemplateCardPr
         <Link href={`/templates/${template.id}`}>
           <div className="aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100">
             <Image
-              src={thumbnail}
+              src={mainImage}
               alt={template.title}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -77,19 +80,27 @@ export function TemplateCard({ template, onAddToCart, onBuyNow }: TemplateCardPr
           </div>
         </Link>
 
+        {/* Top-left status */}
         <div className="absolute top-3 left-3 flex items-center gap-2">
           <Badge className={`${getStatusColor(template.status)} shadow-sm text-[11px]`}>
             {getStatusText(template.status)}
           </Badge>
         </div>
+
+        {/* Top-right orange Add-to-cart button */}
         <div className="absolute top-3 right-3 flex items-center gap-2">
-          <Badge variant="secondary" className="bg-white/95 backdrop-blur-sm text-xs font-semibold shadow-sm">
-            {priceLabel}
-          </Badge>
+          <button
+            type="button"
+            onClick={() => onAddToCart?.(template.id)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-white shadow-md transition-colors hover:bg-orange-600"
+            aria-label="Сагсанд нэмэх"
+          >
+            <ShoppingCart className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
-      <CardContent className="space-y-4 p-5">
+      <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-2">
             <Link href={`/templates/${template.id}`}>
@@ -122,43 +133,10 @@ export function TemplateCard({ template, onAddToCart, onBuyNow }: TemplateCardPr
           </Button>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <div className="flex items-center gap-3">
-            <span className="font-semibold text-gray-800">{authorName}</span>
-            <span className="h-1.5 w-1.5 rounded-full bg-gray-300" aria-hidden />
-            <span className="font-medium text-gray-700">{priceLabel}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <Eye className="h-4 w-4 text-gray-400" />
-              <span>{template.views_count ?? 0}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Download className="h-4 w-4 text-gray-400" />
-              <span>{template.downloads_count ?? 0}</span>
-            </div>
-          </div>
+        {/* Price only */}
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-base font-semibold text-gray-900">{priceLabel}</span>
         </div>
-
-        {template.status === 'APPROVED' && (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Button
-              size="sm"
-              className="w-full whitespace-nowrap"
-              onClick={() => onBuyNow?.(template.id)}
-            >
-              Худалдаж авах
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full px-3"
-              onClick={() => onAddToCart?.(template.id)}
-            >
-              <ShoppingCart className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   )

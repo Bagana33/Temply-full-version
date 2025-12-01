@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, CheckCircle2, XCircle, Timer } from 'lucide-react'
+import { Loader2, CheckCircle2, XCircle, Timer, RefreshCw } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 type PendingTemplate = {
   id: string
@@ -25,6 +26,7 @@ type PendingTemplate = {
 
 export function PendingTemplatesPanel() {
   const { session, role, loading: authLoading } = useAuth()
+  const { toast } = useToast()
   const [templates, setTemplates] = useState<PendingTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -32,15 +34,39 @@ export function PendingTemplatesPanel() {
 
   useEffect(() => {
     if (authLoading) return
+    
+    console.log('PendingTemplatesPanel - Auth state:', {
+      role,
+      hasSession: !!session,
+      hasAccessToken: !!session?.access_token,
+      authLoading
+    })
+    
     if (role === 'ADMIN' && session) {
       loadPending()
     } else {
       setLoading(false)
+      if (role && role !== 'ADMIN') {
+        setError(`Админ эрх шаардлагатай. Таны эрх: ${role}`)
+      } else if (!session) {
+        setError('Нэвтрэх мэдээлэл олдсонгүй')
+      }
     }
   }, [role, session, authLoading])
 
   const loadPending = async () => {
-    if (!session) return
+    if (!session) {
+      setError('Нэвтрэх мэдээлэл олдсонгүй. Дахин нэвтэрнэ үү.')
+      setLoading(false)
+      return
+    }
+    
+    if (!session.access_token) {
+      setError('Access token олдсонгүй. Дахин нэвтэрнэ үү.')
+      setLoading(false)
+      return
+    }
+    
     setLoading(true)
     setError(null)
     try {
@@ -51,14 +77,17 @@ export function PendingTemplatesPanel() {
       })
 
       if (!response.ok) {
-        throw new Error('Хүлээгдэж буй загваруудыг ачаалж чадсангүй')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Хүлээгдэж буй загваруудыг ачаалж чадсангүй')
       }
 
       const json = await response.json()
       const data = Array.isArray(json) ? json : json.templates
       setTemplates(data || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Алдаа гарлаа')
+      const errorMessage = err instanceof Error ? err.message : 'Алдаа гарлаа'
+      setError(errorMessage)
+      console.error('Load pending templates error:', err)
     } finally {
       setLoading(false)
     }
@@ -84,9 +113,25 @@ export function PendingTemplatesPanel() {
         throw new Error(payload.error || 'Төлөв шинэчлэхэд алдаа гарлаа')
       }
 
+      const template = templates.find(t => t.id === templateId)
       setTemplates((prev) => prev.filter((item) => item.id !== templateId))
+      
+      // Амжилттай мессеж харуулах
+      toast({
+        title: nextStatus === 'APPROVED' ? 'Амжилттай зөвшөөрөгдлөө' : 'Татгалзсан',
+        description: nextStatus === 'APPROVED' 
+          ? `"${template?.title}" загвар зөвшөөрөгдөж, нийтэд харагдах боллоо.`
+          : `"${template?.title}" загвар татгалзсан.`,
+        variant: nextStatus === 'APPROVED' ? 'default' : 'destructive',
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Алдаа гарлаа')
+      const errorMessage = err instanceof Error ? err.message : 'Алдаа гарлаа'
+      setError(errorMessage)
+      toast({
+        title: 'Алдаа гарлаа',
+        description: errorMessage,
+        variant: 'destructive',
+      })
     } finally {
       setActionId(null)
     }
@@ -107,7 +152,20 @@ export function PendingTemplatesPanel() {
   }
 
   if (role !== 'ADMIN') {
-    return null
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Хүлээгдэж буй загварууд</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertDescription>
+              Админ эрх шаардлагатай. Таны эрх: {role || 'Тодорхойгүй'}
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -117,10 +175,22 @@ export function PendingTemplatesPanel() {
           <CardTitle>Хүлээгдэж буй загварууд</CardTitle>
           <p className="text-sm text-gray-500">Админ баталгаажуулсны дараа нийтэд харагдана.</p>
         </div>
+        <div className="flex items-center gap-2">
         <Badge variant="outline" className="gap-1">
           <Timer className="h-3 w-3" />
           {templates.length} хүлээгдэж байна
         </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadPending}
+            disabled={loading}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Дахин ачаалах
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {error && (

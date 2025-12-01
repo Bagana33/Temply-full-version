@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { TemplateImageGallery } from '@/components/TemplateImageGallery'
 
 type TemplateDetailPageProps = {
   params: { id: string }
@@ -22,6 +22,7 @@ export default async function TemplateDetailPage({ params }: TemplateDetailPageP
       description,
       price,
       thumbnail_url,
+      preview_images,
       canva_link,
       status,
       users ( id, name )
@@ -35,6 +36,10 @@ export default async function TemplateDetailPage({ params }: TemplateDetailPageP
   }
 
   const authorName = template.users?.name || 'Зохиогч тодорхойгүй'
+  const images: string[] = [
+    template.thumbnail_url,
+    ...(template.preview_images ?? []),
+  ].filter(Boolean)
   const priceLabel = `${new Intl.NumberFormat('mn-MN').format(template.price)}₮`
 
   return (
@@ -51,15 +56,9 @@ export default async function TemplateDetailPage({ params }: TemplateDetailPageP
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <Card className="overflow-hidden">
-            <div className="relative aspect-[4/3] bg-gray-100">
-              <Image
-                src={template.thumbnail_url}
-                alt={template.title}
-                fill
-                className="object-cover"
-                priority
-              />
-            </div>
+            <CardContent className="p-0">
+              <TemplateImageGallery title={template.title} images={images} />
+            </CardContent>
           </Card>
 
           <div className="space-y-4">
@@ -74,21 +73,17 @@ export default async function TemplateDetailPage({ params }: TemplateDetailPageP
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <Button className="w-full sm:w-auto">Худалдаж авах</Button>
-              <Button variant="outline" className="w-full sm:w-auto">
-                Сагсанд нэмэх
+              <Button asChild className="w-full sm:w-auto">
+                <Link href={`/checkout?template=${template.id}`}>Худалдаж авах</Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href={`/cart?add=${template.id}`}>Сагсанд нэмэх</Link>
               </Button>
             </div>
 
             {template.canva_link && (
-              <div className="pt-4">
-                <Link
-                  href={template.canva_link}
-                  target="_blank"
-                  className="text-primary hover:underline text-sm"
-                >
-                  Canva холбоосыг нээх →
-                </Link>
+              <div className="pt-4 text-sm text-gray-500">
+                Худалдан авсны дараа энэхүү загварыг татах боломжтой.
               </div>
             )}
           </div>

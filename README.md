@@ -27,8 +27,8 @@ This scaffold provides a robust foundation built with:
 - **🌐 Axios** - Promise-based HTTP client
 
 ### 🗄️ Database & Backend
-- **🗄️ Prisma** - Next-generation Node.js and TypeScript ORM
-- **🔐 NextAuth.js** - Complete open-source authentication solution
+- **🗄️ Supabase** - Open source Firebase alternative with PostgreSQL
+- **🔐 Supabase Auth** - Built-in authentication and user management
 
 ### 🎨 Advanced UI Features
 - **📊 TanStack Table** - Headless UI for building tables and datagrids
@@ -47,8 +47,8 @@ This scaffold provides a robust foundation built with:
 - **🎨 Beautiful UI** - Complete shadcn/ui component library with advanced interactions
 - **🔒 Type Safety** - Full TypeScript configuration with Zod validation
 - **📱 Responsive** - Mobile-first design principles with smooth animations
-- **🗄️ Database Ready** - Prisma ORM configured for rapid backend development
-- **🔐 Auth Included** - NextAuth.js for secure authentication flows
+- **🗄️ Database Ready** - Supabase PostgreSQL with Row Level Security
+- **🔐 Auth Included** - Supabase Auth for secure authentication flows
 - **📊 Data Visualization** - Charts, tables, and drag-and-drop functionality
 - **🌍 i18n Ready** - Multi-language support with Next Intl
 - **🚀 Production Ready** - Optimized build and deployment settings
@@ -118,8 +118,8 @@ This scaffold includes a comprehensive set of modern web development tools:
 - **Theme Switching**: Built-in dark/light mode support
 
 ### 🔐 Backend Integration
-- **Authentication**: Ready-to-use auth flows with NextAuth.js
-- **Database**: Type-safe database operations with Prisma
+- **Authentication**: Ready-to-use auth flows with Supabase Auth
+- **Database**: Type-safe database operations with Supabase PostgreSQL
 - **API Client**: HTTP requests with Axios + TanStack Query
 - **State Management**: Simple and scalable with Zustand
 
