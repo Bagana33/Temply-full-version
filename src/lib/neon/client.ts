@@ -1,7 +1,4 @@
-import { neon, neonConfig } from '@neondatabase/serverless'
-
-// Configure Neon for optimal performance
-neonConfig.fetchConnectionCache = true
+import { neon } from '@neondatabase/serverless'
 
 const databaseUrl = process.env.DATABASE_URL
 

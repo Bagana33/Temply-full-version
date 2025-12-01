@@ -22,12 +22,25 @@ DATABASE_URL=postgresql://user:password@host/database?sslmode=require
 
 ### 3. Run the Schema
 
-Run the SQL schema from `supabase-schema.sql` in your Neon database:
+You have several options to run the schema:
 
-1. Go to your Neon dashboard
-2. Open the SQL Editor
-3. Copy and paste the contents of `supabase-schema.sql`
-4. Execute the script
+#### Option A: Using Neon Dashboard (Recommended)
+1. Go to your [Neon dashboard](https://console.neon.tech)
+2. Select your project
+3. Open the SQL Editor
+4. Copy and paste the contents of `supabase-schema.sql`
+5. Click "Run" to execute the script
+
+#### Option B: Using psql command line
+If you have `psql` installed:
+```bash
+psql 'postgresql://neondb_owner:npg_nEeQm4XIutk2@ep-bold-mouse-a4j8rrid-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require' -f supabase-schema.sql
+```
+
+#### Option C: Test the connection first
+```bash
+npx tsx src/lib/neon/test-connection.ts
+```
 
 ### 4. Use Neon in Your Code
 
