@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Shield, ClipboardCheck, Users, BarChart2, AlertTriangle } from 'lucide-react'
 import { PendingTemplatesPanel } from './PendingTemplatesPanel'
+import { AllTemplatesPanel } from './AllTemplatesPanel'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 type AdminSummary = {
@@ -120,6 +121,7 @@ export default function AdminPage() {
         </div>
 
         <PendingTemplatesPanel />
+        <AllTemplatesPanel />
       </div>
     </div>
     </ProtectedRoute>
