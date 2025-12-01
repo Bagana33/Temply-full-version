@@ -1,124 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-const getAccessToken = (request: NextRequest) => {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader?.toLowerCase().startsWith('bearer ')) {
-    return authHeader.slice(7)
-  }
-  const cookieToken = request.cookies.get('sb-access-token')?.value
-  return cookieToken || null
-}
-
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const supabase = createServerSupabaseClient()
-  const { id } = params
-
-  const { data, error } = await supabase
-    .from('templates')
-    .select(
-      `
-      id,
-      title,
-      description,
-      price,
-      thumbnail_url,
-      preview_images,
-      canva_link,
-      category,
-      tags,
-      status,
-      creator_id
-    `
-    )
-    .eq('id', id)
-    .single()
-
-  if (error || !data) {
-    return NextResponse.json({ error: error?.message || 'Template not found' }, { status: 404 })
-  }
-
-  return NextResponse.json(data)
-}
-
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const supabase = createServerSupabaseClient()
-  const accessToken = getAccessToken(request)
-
-  if (!accessToken) {
-    return NextResponse.json({ error: 'Нэвтэрсэн байх шаардлагатай' }, { status: 401 })
-  }
-
-  const { data: authData, error: authError } = await supabase.auth.getUser(accessToken)
-  if (authError || !authData?.user) {
-    return NextResponse.json({ error: 'Нэвтрэх мэдээлэл буруу байна' }, { status: 401 })
-  }
-
-  const { id } = params
-  const body = await request.json()
-
-  // зөвхөн өөрийн загвар эсвэл админ
-  let role = (authData.user.user_metadata?.role as string | undefined) ?? null
-  if (!role) {
-    const { data: userRow } = await supabase.from('users').select('role').eq('id', authData.user.id).single()
-    role = userRow?.role ?? null
-  }
-
-  const { data: existing, error: existingError } = await supabase
-    .from('templates')
-    .select('id, creator_id')
-    .eq('id', id)
-    .single()
-
-  if (existingError || !existing) {
-    return NextResponse.json({ error: 'Загвар олдсонгүй' }, { status: 404 })
-  }
-
-  if (existing.creator_id !== authData.user.id && role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Энэ загварыг засах эрхгүй байна' }, { status: 403 })
-  }
-
-  const updatePayload: Partial<import('@/types/database').Database['public']['Tables']['templates']['Update']> = {
-    title: body.title,
-    description: body.description,
-    price: body.price,
-    canva_link: body.canva_link,
-    category: body.category,
-    tags: body.tags,
-    thumbnail_url: body.thumbnail_url,
-    preview_images: body.preview_images
-  }
-
-  const { data, error } = await supabase
-    .from('templates')
-    .update(updatePayload)
-    .eq('id', id)
-    .select(
-      `
-      id,
-      title,
-      price,
-      thumbnail_url
-    `
-    )
-    .single()
-
-  if (error || !data) {
-    return NextResponse.json({ error: error?.message || 'Update failed' }, { status: 500 })
-  }
-
-  return NextResponse.json(data)
-}
-
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-
 type TemplateStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
 const getAccessToken = (request: NextRequest) => {
@@ -194,6 +76,7 @@ export async function GET(
   return NextResponse.json(data)
 }
 
+// Admin-only status update
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -233,6 +116,61 @@ export async function PATCH(
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update template' }, { status: 400 })
   }
+}
+
+// Owner or admin can update template content
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const templateId = params.id
+  const supabase = createServerSupabaseClient()
+  const requester = await getRequester(request, supabase)
+
+  if (!requester.accessToken || !requester.userId) {
+    return NextResponse.json({ error: 'Нэвтэрсэн байх шаардлагатай' }, { status: 401 })
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from('templates')
+    .select('id, creator_id')
+    .eq('id', templateId)
+    .single()
+
+  if (existingError || !existing) {
+    return NextResponse.json({ error: 'Загвар олдсонгүй' }, { status: 404 })
+  }
+
+  const isOwner = existing.creator_id === requester.userId
+  if (!isOwner && !requester.isAdmin) {
+    return NextResponse.json({ error: 'Энэ загварыг засах эрхгүй байна' }, { status: 403 })
+  }
+
+  const body = await request.json()
+
+  const updatePayload: Partial<import('@/types/database').Database['public']['Tables']['templates']['Update']> = {
+    title: body.title,
+    description: body.description,
+    price: body.price,
+    canva_link: body.canva_link,
+    category: body.category,
+    tags: body.tags,
+    thumbnail_url: body.thumbnail_url,
+    preview_images: body.preview_images
+  }
+
+  const { data, error } = await supabase
+    .from('templates')
+    .update(updatePayload)
+    .eq('id', templateId)
+    .select('id, title, price, thumbnail_url, status')
+    .single()
+
+  if (error || !data) {
+    return NextResponse.json({ error: error?.message || 'Update failed' }, { status: 500 })
+  }
+
+  return NextResponse.json(data)
 }
 
 export async function DELETE(
