@@ -4,8 +4,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { ShoppingCart, ExternalLink } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 type TemplateCardProps = {
   template: {
@@ -30,6 +31,8 @@ type TemplateCardProps = {
 }
 
 export function TemplateCard({ template, onAddToCart, onBuyNow }: TemplateCardProps) {
+  const { role } = useAuth()
+  const isCreator = role === 'CREATOR'
   const formatPrice = (price: number) => new Intl.NumberFormat('mn-MN').format(price)
 
   const getStatusColor = (status?: string) => {
@@ -66,78 +69,79 @@ export function TemplateCard({ template, onAddToCart, onBuyNow }: TemplateCardPr
   const tags = template.tags ?? []
 
   return (
-    <Card className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_16px_50px_-24px_rgba(0,0,0,0.25)]">
-      <div className="relative">
-        <Link href={`/templates/${template.id}`}>
-          <div className="aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100">
+    <Card className="group relative bg-transparent p-0 shadow-none">
+      <div className="relative overflow-hidden rounded-[28px] bg-white shadow-[0_22px_70px_-30px_rgba(15,23,42,0.65)] transition-transform duration-300 group-hover:-translate-y-1">
+        {/* Image */}
+        <div className="relative h-64 sm:h-72 overflow-hidden">
+          <Link href={`/templates/${template.id}`}>
             <Image
               src={mainImage}
               alt={template.title}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent opacity-40 group-hover:opacity-80 transition-opacity duration-300" />
-          </div>
-        </Link>
+          </Link>
+          {/* Dark gradient overlay at bottom */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-black/85 via-black/60 to-transparent" />
 
-        {/* Top-left status */}
-        <div className="absolute top-3 left-3 flex items-center gap-2">
-          <Badge className={`${getStatusColor(template.status)} shadow-sm text-[11px]`}>
-            {getStatusText(template.status)}
-          </Badge>
-        </div>
+          {/* Text and price overlay at bottom */}
+          <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-4 pt-6 text-white">
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <Link href={`/templates/${template.id}`}>
+                  <h3 className="font-semibold text-lg leading-snug text-white line-clamp-1">
+                    {template.title}
+                  </h3>
+                </Link>
+                {template.description && (
+                  <p className="text-xs text-slate-200/80 line-clamp-1">
+                    {template.description}
+                  </p>
+                )}
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {template.category && (
+                    <Badge variant="outline" className="border-white/20 bg-white/5 text-[11px] text-slate-50">
+                      {template.category}
+                    </Badge>
+                  )}
+                  {tags.slice(0, 2).map((tag, index) => (
+                    <Badge
+                      key={index}
+                      variant="secondary"
+                      className="bg-white/10 text-[11px] text-slate-50 backdrop-blur-sm"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                asChild
+                className="mt-1 h-8 w-8 rounded-full bg-white/10 text-slate-100 hover:bg-white/20"
+              >
+                <Link href={`/templates/${template.id}`} aria-label="Дэлгэрэнгүй">
+                  <ExternalLink className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
 
-        {/* Top-right orange Add-to-cart button */}
-        <div className="absolute top-3 right-3 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onAddToCart?.(template.id)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-white shadow-md transition-colors hover:bg-orange-600"
-            aria-label="Сагсанд нэмэх"
-          >
-            <ShoppingCart className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      <CardContent className="space-y-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-2">
-            <Link href={`/templates/${template.id}`}>
-              <h3 className="font-semibold text-lg leading-snug text-gray-900 line-clamp-2 hover:text-primary transition-colors">
-                {template.title}
-              </h3>
-            </Link>
-            {template.description && (
-              <p className="text-sm text-gray-600 line-clamp-2">
-                {template.description}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {template.category && (
-                <Badge variant="outline" className="text-[11px] border-dashed">
-                  {template.category}
-                </Badge>
+            <div className="mt-1 flex items-center justify-between">
+              {!isCreator && (
+                <button
+                  type="button"
+                  onClick={() => onAddToCart?.(template.id)}
+                  className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-1 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-white"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  <span>{priceLabel}</span>
+                </button>
               )}
-              {tags.slice(0, 3).map((tag, index) => (
-                <Badge key={index} variant="secondary" className="text-[11px] bg-slate-100 text-slate-700">
-                  {tag}
-                </Badge>
-              ))}
             </div>
           </div>
-          <Button variant="ghost" size="icon" asChild className="h-9 w-9 text-slate-400 hover:text-primary">
-            <Link href={`/templates/${template.id}`} aria-label="Дэлгэрэнгүй">
-              <ExternalLink className="h-4 w-4" />
-            </Link>
-          </Button>
         </div>
-
-        {/* Price only */}
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-base font-semibold text-gray-900">{priceLabel}</span>
-        </div>
-      </CardContent>
+      </div>
     </Card>
   )
 }

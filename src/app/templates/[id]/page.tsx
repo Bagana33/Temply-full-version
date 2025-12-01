@@ -14,6 +14,14 @@ export default async function TemplateDetailPage({ params }: TemplateDetailPageP
   const { id } = params
   const supabase = createServerSupabaseClient()
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const userRole =
+    (user?.user_metadata?.role as string | undefined) ??
+    null
+  const isCreator = userRole === 'CREATOR'
+
   const { data: template } = await supabase
     .from('templates')
     .select(`
@@ -72,14 +80,16 @@ export default async function TemplateDetailPage({ params }: TemplateDetailPageP
               <Badge className="bg-primary text-white">{priceLabel}</Badge>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <Button asChild className="w-full sm:w-auto">
-                <Link href={`/checkout?template=${template.id}`}>Худалдаж авах</Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full sm:w-auto">
-                <Link href={`/cart?add=${template.id}`}>Сагсанд нэмэх</Link>
-              </Button>
-            </div>
+            {!isCreator && (
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <Button asChild className="w-full sm:w-auto">
+                  <Link href={`/checkout?template=${template.id}`}>Худалдаж авах</Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full sm:w-auto">
+                  <Link href={`/cart?add=${template.id}`}>Сагсанд нэмэх</Link>
+                </Button>
+              </div>
+            )}
 
             {template.canva_link && (
               <div className="pt-4 text-sm text-gray-500">

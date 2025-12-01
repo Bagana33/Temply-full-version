@@ -24,6 +24,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Нэвтрэх мэдээлэл буруу байна' }, { status: 401 })
   }
 
+  const userRole =
+    (authData.user.user_metadata?.role as string | undefined) ?? null
+  if (userRole === 'CREATOR') {
+    return NextResponse.json({ error: 'Дизайнер хэрэглэгч худалдан авалт хийх боломжгүй' }, { status: 403 })
+  }
+
   const { data, error } = await supabase
     .from('purchases')
     .select(`

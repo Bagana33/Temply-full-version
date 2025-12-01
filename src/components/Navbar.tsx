@@ -55,7 +55,7 @@ export function Navbar() {
       case 'ADMIN':
         return 'Админ самбар'
       case 'CREATOR':
-        return 'Дашборд'
+        return 'Миний загварууд'
       default:
         return 'Профайл'
     }
@@ -113,15 +113,28 @@ export function Navbar() {
           {/* Desktop Navigation + Search */}
           <div className="hidden md:flex items-center flex-1 gap-6">
             <div className="flex items-center space-x-6">
-            <Link href="/templates" className="text-gray-700 hover:text-primary transition-colors">
-              Загварууд
-            </Link>
-            <Link href="/pricing" className="text-gray-700 hover:text-primary transition-colors">
-              Үнэ
-            </Link>
-            <Link href="/creator" className="text-gray-700 hover:text-primary transition-colors">
-              Дизайнер болох
-            </Link>
+              <Link href="/templates" className="text-gray-700 hover:text-primary transition-colors">
+                Загварууд
+              </Link>
+              {role !== 'CREATOR' && (
+                <Link href="/pricing" className="text-gray-700 hover:text-primary transition-colors">
+                  Үнэ
+                </Link>
+              )}
+              {role === 'CREATOR' ? (
+                <>
+                  <Link href="/dashboard" className="text-gray-700 hover:text-primary transition-colors">
+                    Дашборд
+                  </Link>
+                  <Link href="/upload" className="text-gray-700 hover:text-primary transition-colors">
+                    Загвар оруулах
+                  </Link>
+                </>
+              ) : (
+                <Link href="/creator" className="text-gray-700 hover:text-primary transition-colors">
+                  Дизайнер болох
+                </Link>
+              )}
             </div>
 
             {/* Search bar (desktop only) */}
@@ -291,12 +304,25 @@ export function Navbar() {
             <Link href="/templates" className="block px-3 py-2 text-gray-700 hover:text-primary">
               Загварууд
             </Link>
-            <Link href="/pricing" className="block px-3 py-2 text-gray-700 hover:text-primary">
-              Үнэ
-            </Link>
-            <Link href="/creator" className="block px-3 py-2 text-gray-700 hover:text-primary">
-              Дизайнер болох
-            </Link>
+            {role !== 'CREATOR' && (
+              <Link href="/pricing" className="block px-3 py-2 text-gray-700 hover:text-primary">
+                Үнэ
+              </Link>
+            )}
+            {role === 'CREATOR' ? (
+              <>
+                <Link href="/dashboard" className="block px-3 py-2 text-gray-700 hover:text-primary">
+                  Дашборд
+                </Link>
+                <Link href="/upload" className="block px-3 py-2 text-gray-700 hover:text-primary">
+                  Загвар оруулах
+                </Link>
+              </>
+            ) : (
+              <Link href="/creator" className="block px-3 py-2 text-gray-700 hover:text-primary">
+                Дизайнер болох
+              </Link>
+            )}
             {user ? (
               <>
                 <Link href="/cart" className="block px-3 py-2 text-gray-700 hover:text-primary">

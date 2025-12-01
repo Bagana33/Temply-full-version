@@ -1,8 +1,8 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,9 @@ const defaultTemplate = {
 
 export default function UploadPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const templateId = searchParams.get('templateId')
+  const isEditing = Boolean(templateId)
   const [form, setForm] = useState(defaultTemplate)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -34,6 +37,43 @@ export default function UploadPage() {
   const { user, session } = useAuth()
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
   const [previewFiles, setPreviewFiles] = useState<(File | null)[]>([null, null, null, null])
+  const [existingThumbnailUrl, setExistingThumbnailUrl] = useState<string | null>(null)
+  const [existingPreviewUrls, setExistingPreviewUrls] = useState<string[]>([])
+
+  useEffect(() => {
+    const loadTemplate = async () => {
+      if (!templateId || !session?.access_token) return
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch(`/api/templates/${templateId}`, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        })
+        if (!res.ok) {
+          throw new Error('Загварыг ачаалж чадсангүй')
+        }
+        const data = await res.json()
+        setForm({
+          title: data.title ?? '',
+          description: data.description ?? '',
+          price: String(data.price ?? ''),
+          canva_link: data.canva_link ?? '',
+          category: data.category ?? '',
+          tags: Array.isArray(data.tags) ? data.tags.join(', ') : ''
+        })
+        setExistingThumbnailUrl(data.thumbnail_url ?? null)
+        setExistingPreviewUrls(data.preview_images ?? [])
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Алдаа гарлаа')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadTemplate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId, session?.access_token])
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({
@@ -85,14 +125,15 @@ export default function UploadPage() {
         throw new Error('Нэвтэрсэн байх шаардлагатай')
       }
 
-      if (!thumbnailFile) {
+      let thumbnailUrl = existingThumbnailUrl
+      if (thumbnailFile) {
+        thumbnailUrl = await uploadImage(thumbnailFile)
+      }
+      if (!thumbnailUrl) {
         throw new Error('Үндсэн зургийг заавал оруулах шаардлагатай')
       }
 
-      // Эхлээд зургуудыг upload хийж URL-уудыг авна
-      const thumbnailUrl = await uploadImage(thumbnailFile)
-
-      const previewUrls: string[] = []
+      const previewUrls: string[] = [...existingPreviewUrls]
       for (const file of previewFiles) {
         if (file) {
           const url = await uploadImage(file)
@@ -100,24 +141,26 @@ export default function UploadPage() {
         }
       }
 
-      const response = await fetch('/api/templates', {
-        method: 'POST',
+      const payload = {
+        title: form.title,
+        description: form.description,
+        price: Number(form.price),
+        thumbnail_url: thumbnailUrl,
+        canva_link: form.canva_link,
+        preview_images: previewUrls,
+        category: form.category,
+        tags: form.tags.split(',').map((tag) => tag.trim()),
+        creator_id: user.id,
+        created_at: new Date().toISOString()
+      }
+
+      const response = await fetch(isEditing ? `/api/templates/${templateId}` : '/api/templates', {
+        method: isEditing ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`
         },
-        body: JSON.stringify({
-          title: form.title,
-          description: form.description,
-          price: Number(form.price),
-          thumbnail_url: thumbnailUrl,
-          canva_link: form.canva_link,
-          preview_images: previewUrls,
-          category: form.category,
-          tags: form.tags.split(',').map((tag) => tag.trim()),
-          creator_id: user.id,
-          created_at: new Date().toISOString()
-        })
+        body: JSON.stringify(payload)
       })
 
       if (!response.ok) {
@@ -127,7 +170,9 @@ export default function UploadPage() {
       setForm(defaultTemplate)
       setThumbnailFile(null)
       setPreviewFiles([null, null, null, null])
-      setMessage('Загвар амжилттай илгээгдлээ! Хяналтын баг шалгаад мэдэгдэнэ.')
+      setExistingThumbnailUrl(null)
+      setExistingPreviewUrls([])
+      setMessage(isEditing ? 'Загвар амжилттай шинэчлэгдлээ.' : 'Загвар амжилттай илгээгдлээ! Хяналтын баг шалгаад мэдэгдэнэ.')
       setTimeout(() => {
         router.push('/dashboard')
       }, 1200)
@@ -148,8 +193,12 @@ export default function UploadPage() {
           </Link>
 
           <div>
-            <Badge className="mb-2 bg-primary/10 text-primary">Загвар илгээх</Badge>
-            <h1 className="text-3xl font-bold text-gray-900">Шинэ загвар байршуулах</h1>
+            <Badge className="mb-2 bg-primary/10 text-primary">
+              {isEditing ? 'Загвар засах' : 'Загвар илгээх'}
+            </Badge>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {isEditing ? 'Загвар засварлах' : 'Шинэ загвар байршуулах'}
+            </h1>
             <p className="text-gray-600">
               Canva дээр бүтээсэн загварын мэдээллийг бүрэн бөглөж илгээгээрэй. Одоогоор mock API ашиглаж байна.
             </p>
@@ -224,7 +273,6 @@ export default function UploadPage() {
                         id="thumbnail"
                         type="file"
                         accept="image/*"
-                        required
                         onChange={handleThumbnailChange}
                       />
                     </div>
