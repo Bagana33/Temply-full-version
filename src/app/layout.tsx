@@ -1,64 +1,70 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import type { Metadata } from 'next'
+import { Inter, Poppins } from 'next/font/google'
+import './globals.css'
+import { Toaster } from '@/components/ui/toaster'
+import { AuthProvider } from '@/contexts/AuthContext'
+import { Navbar } from '@/components/Navbar'
+import { Footer } from '@/components/Footer'
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const inter = Inter({
+  variable: '--font-inter',
+  subsets: ['latin', 'cyrillic'],
+  display: 'swap',
+})
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const poppins = Poppins({
+  variable: '--font-poppins',
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800'],
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
-  title: "Temply - Дизайнаа хурдан, гоё болго",
-  description: "Мэргэжилтэн дизайнчилсан Canva загваруудыг таны гар хүрэхэд. Дизайнаа хурдан, гоё болго.",
-  keywords: ["Temply", "Canva", "загвар", "дизайн", "Монгол", "template"],
-  authors: [{ name: "Temply Team" }],
+  metadataBase: new URL('https://www.temply.business'),
+  title: {
+    default: 'Temply — Монгол Canva Template Marketplace',
+    template: '%s | Temply',
+  },
+  description:
+    'Монгол дизайнеруудын бүтээсэн Canva template-үүдийг сонгож, өөрийн контентод хурдан тохируулан ашигла.',
+  keywords: ['Temply', 'Canva', 'template', 'загвар', 'дизайн', 'Монгол', 'marketplace'],
+  authors: [{ name: 'Temply' }],
+  creator: 'Temply',
   icons: {
-    icon: "/logo.svg",
+    icon: '/logo.svg',
   },
   openGraph: {
-    title: "Temply - Дизайнаа хурдан, гоё болго",
-    description: "Мэргэжилтэн дизайнчилсан Canva загваруудыг таны гар хүрэхэд",
-    url: "https://temply.mn",
-    siteName: "Temply",
-    type: "website",
+    title: 'Temply — Монгол Canva Template Marketplace',
+    description: 'Бэлэн загвараас эхэл. Өөрийнхөөрөө бүтээ.',
+    url: 'https://www.temply.business',
+    siteName: 'Temply',
+    locale: 'mn_MN',
+    type: 'website',
   },
   twitter: {
-    card: "summary_large_image",
-    title: "Temply - Дизайнаа хурдан, гоё болго",
-    description: "Мэргэжилтэн дизайнчилсан Canva загваруудыг таны гар хүрэхэд",
+    card: 'summary_large_image',
+    title: 'Temply — Монгол Canva Template Marketplace',
+    description: 'Бэлэн загвараас эхэл. Өөрийнхөөрөө бүтээ.',
   },
-};
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
     <html lang="mn" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
-      >
+      <body className={`${inter.variable} ${poppins.variable} bg-background text-foreground antialiased`}>
         <AuthProvider>
-          <div className="min-h-screen flex flex-col">
+          <div className="flex min-h-screen flex-col">
             <Navbar />
-            <main className="flex-1">
-              {children}
-            </main>
+            <main className="flex-1">{children}</main>
             <Footer />
           </div>
           <Toaster />
         </AuthProvider>
       </body>
     </html>
-  );
+  )
 }
